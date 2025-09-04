@@ -1,53 +1,102 @@
-use crate::instructions::{Instruction, ParamType};
-use super::parser::InstructionInstance;
+use super::parser::{InstructionInstance, Param};
+use crate::{assembler::parser::Player, instructions::{Instruction, ParamType, INSTRUCTIONS}};
+use anyhow::{Result, anyhow};
 
-pub fn encode_instruction(inst: &InstructionInstance) -> Vec<u8> {
-    let mut bytes = Vec::new();
-
-    // 1️⃣ Opcode
-    bytes.push(inst.instr.opcode as u8);
-
-    // 2️⃣ Parameter coding byte (pcode)
-    if inst.instr.has_pcode {
-        let mut pcode: u8 = 0;
-
-        for (i, param) in inst.params.iter().enumerate() {
-            let code = match param.param_type {
-                ParamType::Register => 0b01,
-                ParamType::Direct   => 0b10,
-                ParamType::Indirect => 0b11,
-            };
-
-            // Pcode: first param occupies bits 6-7, second 4-5, third 2-3
-            let shift = 6 - i * 2;
-            pcode |= code << shift;
-        }
-        bytes.push(pcode);
-    }
-
-    // 3️⃣ Parameter values
-    for param in &inst.params {
-        match param.param_type {
-            ParamType::Register => bytes.push(param.value as u8),
-            ParamType::Direct => {
-                let val = param.value as i16; // normally 2 bytes, could be 4 for live/ld
-                bytes.extend_from_slice(&val.to_be_bytes());
-            }
-            ParamType::Indirect => {
-                let val = param.value as i16;
-                bytes.extend_from_slice(&val.to_be_bytes());
-            }
-        }
-    }
-
-    bytes
+struct CorHeader {
+    magic: u32,
+    name: [u8; 128],
+    padding1: [u8; 4],
+    prog_size: u32,
+    comment: [u8; 2048],
+    padding2: [u8; 4],
 }
 
-// Encode a full program
-pub fn encode_program(insts: &[InstructionInstance]) -> Vec<u8> {
-    let mut program = Vec::new();
-    for inst in insts {
-        program.extend_from_slice(&encode_instruction(inst));
+impl CorHeader {
+    fn new(name_str: &str, comment_str: &str, prog_size: u32) -> Self {
+        let mut name = [0u8; 128];
+        let mut comment = [0u8; 2048];
+        name[..name_str.len()].copy_from_slice(name_str.as_bytes());
+        comment[..comment_str.len()].copy_from_slice(comment_str.as_bytes());
+        Self {
+            magic: 0x00EA83F3,
+            name,
+            padding1: [0u8; 4],
+            prog_size,
+            comment,
+            padding2: [0u8; 4],
+        }
     }
-    program
+}
+
+fn compute_pcode(params: &[Param]) -> u8 {
+    let mut pcode = 0u8;
+    for (i, param) in params.iter().enumerate() {
+        let bits = match param.param_type {
+            ParamType::Register => 0b01,
+            ParamType::Direct => 0b10,
+            ParamType::Indirect => 0b11,
+        };
+        pcode |= bits << (6 - 2 * i);
+    }
+    pcode
+}
+
+fn compute_program_size(instructions: &[InstructionInstance]) -> u32 {
+    instructions.iter().map(|inst| {
+        let mut size = 1; // opcode
+        if inst.instr.has_pcode { size += 1; }
+        for param in &inst.params {
+            size += match param.param_type {
+                ParamType::Register => 1,
+                ParamType::Indirect => 2,
+                ParamType::Direct => if inst.instr.has_idx { 2 } else { 4 },
+            };
+        }
+        size
+    }).sum()
+}
+
+
+
+pub fn encode(player: Player) -> Result<Vec<u8>> {
+    let prog_size = compute_program_size(&player.instructions);
+    let head = CorHeader::new(&player.name, &player.comment, prog_size);
+
+    let mut buffer = Vec::new();
+
+    // Serialize header
+    buffer.extend(&head.magic.to_be_bytes()); 
+    buffer.extend(&head.name);                
+    buffer.extend(&head.padding1);           
+    buffer.extend(&head.prog_size.to_be_bytes()); 
+    buffer.extend(&head.comment);            
+    buffer.extend(&head.padding2);           
+
+    // Encode each instruction
+    for inst in &player.instructions {
+        buffer.push(inst.instr.opcode as u8); // opcode
+
+        if inst.instr.has_pcode {
+            let pcode = compute_pcode(&inst.params);
+            buffer.push(pcode);
+        }
+
+        for param in &inst.params {
+            match param.param_type {
+                ParamType::Register => buffer.push(param.value as u8),
+                ParamType::Direct => {
+                    if inst.instr.has_idx {
+                        buffer.extend(&(param.value as i16).to_be_bytes());
+                    } else {
+                        buffer.extend(&param.value.to_be_bytes());
+                    }
+                }
+                ParamType::Indirect => {
+                    buffer.extend(&(param.value as i16).to_be_bytes());
+                }
+            }
+        }
+    }
+
+    Ok(buffer)
 }
