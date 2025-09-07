@@ -6,7 +6,6 @@ use crate::instructions::{INSTRUCTIONS, Instruction, ParamType};
 pub struct CorHeader {
     pub name: String,
     pub comment: String,
-    pub prog_size: u32,
 }
 
 pub struct InstructionInstance {
@@ -33,11 +32,10 @@ impl Disassembler {
         }
 
         let name = String::from_utf8_lossy(&bytes[4..132]).trim_end_matches('\0').to_string();
-        let prog_size = u32::from_be_bytes([bytes[136], bytes[137], bytes[138], bytes[139]]);
         let comment = String::from_utf8_lossy(&bytes[140..2188]).trim_end_matches('\0').to_string();
 
         let mut disassembler = Disassembler {
-            header: CorHeader { name, comment, prog_size },
+            header: CorHeader { name, comment },
             instructions: Vec::new(),
         };
 

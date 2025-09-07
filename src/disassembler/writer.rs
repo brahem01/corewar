@@ -5,8 +5,8 @@ use crate::disassembler::{Disassembler};
 
 pub fn write_s_file(dis: &Disassembler, path: &str) -> Result<()> {
     let mut file = File::create(path)?;
-    writeln!(file, "; Name: {}", dis.header.name)?;
-    writeln!(file, "; Comment: {}", dis.header.comment)?;
+    writeln!(file, ".Name: {}", dis.header.name)?;
+    writeln!(file, ".Comment: {}", dis.header.comment)?;
     writeln!(file)?;
 
     for inst in &dis.instructions {
