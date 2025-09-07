@@ -12,6 +12,13 @@ use crate::instructions::{Instruction, ParamType, INSTRUCTIONS};
 pub struct Param {
     pub param_type: ParamType,
     pub value: i32,
+    // pub value: ValueType,
+}
+
+#[derive(Debug)]
+pub enum ValueType {
+    value(i32),
+    label(String),
 }
 
 #[derive(Debug)]
@@ -51,7 +58,7 @@ pub fn parse_file(path: &Path) -> Result<Player> {
         if line_trimmed.starts_with(".name") {
             if let Some(start) = line_trimmed.find('"') {
                 if let Some(end) = line_trimmed[start + 1..].find('"') {
-                    if player.name.is_empty() {
+                    if !player.name.is_empty() {
                         return Err(anyhow!(format!(
                             "Error line {}: multiple name declaration",
                             line_num + 1
@@ -71,7 +78,7 @@ pub fn parse_file(path: &Path) -> Result<Player> {
         if line_trimmed.starts_with(".comment") {
             if let Some(start) = line_trimmed.find('"') {
                 if let Some(end) = line_trimmed[start + 1..].find('"') {
-                    if player.comment.is_empty() {
+                    if !player.comment.is_empty() {
                         return Err(anyhow!(format!(
                             "Error line {}: multiple comment declaration",
                             line_num + 1

@@ -24,6 +24,8 @@ pub fn tokenize(line: &str) -> Vec<Token> {
         } else if let Some(dir) = p.strip_prefix('%') {
             if let Ok(val) = dir.parse::<i32>() {
                 tokens.push(Token::Direct(val));
+            } else {
+                tokens.push(Token::LabelRef(dir.to_string()));
             }
         } else if let Ok(num) = p.parse::<i32>() {
             tokens.push(Token::Indirect(num));

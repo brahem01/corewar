@@ -74,6 +74,7 @@ pub fn encode(player: Player) -> Result<Vec<u8>> {
 
     // Encode each instruction
     for inst in &player.instructions {
+        //if its a label register the adress < labelDef>
         buffer.push(inst.instr.opcode as u8); // opcode
 
         if inst.instr.has_pcode {
