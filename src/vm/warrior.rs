@@ -6,7 +6,7 @@ pub struct Warrior{
       pub registers: [i32; 16],
       pub pc: usize,
       pub cycles: u8,
-      pub cary: bool,
+      pub carry: bool,
       pub alive: bool,
 }
 
@@ -19,7 +19,7 @@ impl Warrior{
                   registers: [0; 16],
                   pc: 0,
                   cycles: 0,
-                  cary: false,
+                  carry: false,
                   alive: true,
             }
       }

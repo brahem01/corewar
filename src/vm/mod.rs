@@ -11,8 +11,6 @@ pub fn vm() -> Result<()> {
       let mut arena = memory::Arena::new();
       let warriors = arena.setup_warriors(warriors_data)?;
       let mut executer = executer::Executer::new(arena, warriors);
-      for warrior in executer.warriors {
-            
-      }
+      executer.execute_cycle();
       Ok(())
 }
