@@ -16,7 +16,7 @@ pub struct ExecutableInstruction {
 
 #[derive(Debug)]
 pub struct Arena {
-      memory: [Option<ExecutableInstruction>; 4096],
+      pub memory: [Option<ExecutableInstruction>; 4096],
 }
 
 impl Arena {
@@ -37,7 +37,8 @@ impl Arena {
 
                   // i didn't understand exactly why the first register should contains the negative player id yet: 
                   warrior.registers[0] = -(i as i32 + 1);
-                  warrior.pc = start_pos as u8;
+                  warrior.pc = start_pos;
+                  warrior.id = i as u8 +1;
                   warriors.push(warrior.clone());
             }
             Ok(warriors)     

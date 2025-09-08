@@ -1,4 +1,3 @@
-mod cpu;
 mod executer;
 mod memory;
 mod parser;
@@ -8,12 +7,12 @@ use anyhow::{Result};
 
 
 pub fn vm() -> Result<()> {
-      let warriors_data = parser::parse_folder()?;
+      let warriors_data: Vec<(warrior::Warrior, Vec<u8>)> = parser::parse_folder()?;
       let mut arena = memory::Arena::new();
       let warriors = arena.setup_warriors(warriors_data)?;
-      let cpu = cpu::Cpu::new();
-      let mut executer = executer::Executer::new(arena, warriors, cpu);
+      let mut executer = executer::Executer::new(arena, warriors);
       for warrior in executer.warriors {
+            
       }
       Ok(())
 }
