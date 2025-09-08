@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.99"
 corewars = "0.2.0"
+dotenv = "0.15.0"
 thiserror = "2.0.16"
