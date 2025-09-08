@@ -1,13 +1,13 @@
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParamType {
     Register,
     Direct,
     Indirect,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub name: &'static str,
