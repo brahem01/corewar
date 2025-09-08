@@ -1,10 +1,6 @@
 use crate::{instructions::*, vm::warrior::Warrior, utils::*};
 use anyhow::{anyhow, Ok, Result};
-
-
-const ARENA_SIZE: usize = 4096;
-const IDX_MOD: i32 = 512;
-const MAX_PROGRAM_SIZE: usize = 682;
+use crate::vm::config::*;
 
 #[derive(Debug, Clone)]
 pub struct ExecutableInstruction {
@@ -16,7 +12,7 @@ pub struct ExecutableInstruction {
 
 #[derive(Debug)]
 pub struct Arena {
-      pub memory: [Option<ExecutableInstruction>; 4096],
+      pub memory: [Option<ExecutableInstruction>; ARENA_SIZE],
 }
 
 impl Arena {
@@ -29,10 +25,10 @@ impl Arena {
       pub fn setup_warriors(&mut self, w_data: Vec<(Warrior, Vec<u8>)>) -> Result<Vec<Warrior>> {
             let mut warriors = Vec::new();
             let warriors_number = w_data.len();
-            let spacing = ARENA_SIZE/warriors_number;
+            let spacing = MEM_SIZE/warriors_number;
 
             for (i, (mut warrior, bytecode)) in w_data.into_iter().enumerate() {
-                  let start_pos = (i*spacing)%ARENA_SIZE;
+                  let start_pos = (i*spacing)%MEM_SIZE;
                   self.load_program(start_pos, &bytecode, i)?;
 
                   // i didn't understand exactly why the first register should contains the negative player id yet: 
@@ -53,7 +49,7 @@ impl Arena {
             while cursor < bytecode.len() {
                 let (exec_instr, consumed) = decode_instruction(bytecode, cursor)?;
                 self.write_instruction(start_pos, exec_instr)?;
-                start_pos = (start_pos + 1) % ARENA_SIZE;
+                start_pos = (start_pos + 1) % MEM_SIZE;
                 cursor += consumed;
             }
     
@@ -64,7 +60,7 @@ impl Arena {
 
           /// Write executable instruction to memory
       pub fn write_instruction(&mut self, address: usize, instruction: ExecutableInstruction) -> Result<()> {
-            let normalized_addr = address % ARENA_SIZE;
+            let normalized_addr = address % MEM_SIZE;
             self.memory[normalized_addr] = Some(instruction);
             Ok(())
       }

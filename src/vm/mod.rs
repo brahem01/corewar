@@ -2,6 +2,8 @@ mod executer;
 mod memory;
 mod parser;
 mod warrior;
+mod config;
+mod process;
 use anyhow::{Result};
 
 
