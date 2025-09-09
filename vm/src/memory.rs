@@ -1,6 +1,8 @@
+use std::process;
+
 use shared::{instructions::*, utils::*};
 use anyhow::{anyhow, Ok, Result};
-use crate::{config::*, warrior::Warrior};
+use crate::{config::*, process::Process, warrior::Warrior};
 
 #[derive(Debug, Clone)]
 pub struct ExecutableInstruction {
@@ -28,16 +30,16 @@ impl Arena {
             let spacing = MEM_SIZE/warriors_number;
 
             for (i, (mut warrior, bytecode)) in w_data.into_iter().enumerate() {
+
                   let start_pos = (i*spacing)%MEM_SIZE;
                   self.load_program(start_pos, &bytecode, i)?;
 
                   // i didn't understand exactly why the first register should contains the negative player id yet: 
-                  warrior.registers[0] = -(i as i32 + 1);
-                  warrior.pc = start_pos;
-                  warrior.id = i as u8 +1;
+                  let process = Process::new(start_pos, i as u8 + 1);
+                  warrior.processes.push(process);
                   warriors.push(warrior.clone());
             }
-            Ok(warriors)     
+            Ok(warriors)
       }
 
       fn load_program(&mut self, mut start_pos: usize, bytecode: &[u8], warrior_id: usize) -> Result<()> {
