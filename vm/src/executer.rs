@@ -1,8 +1,9 @@
-use crate::vm::*;
-use crate::instructions::*;
+use crate::process::Process;
+use crate::*;
+use shared::instructions::*;
 
-use crate::vm::memory::{Arena, ExecutableInstruction};
-use crate::vm::warrior::Warrior;
+use crate::memory::{Arena, ExecutableInstruction};
+use crate::warrior::Warrior;
 
 pub struct Executer {
       pub arena: memory::Arena, 
@@ -12,6 +13,10 @@ pub struct Executer {
 impl Executer {
     pub fn new(arena: memory::Arena, warriors: Vec<warrior::Warrior>) -> Self{
       Self { arena, warriors }
+    }
+
+    pub fn run(&mut self) {
+        todo!()
     }
 
     pub fn execute_cycle(&mut self) {
@@ -31,8 +36,9 @@ impl Executer {
           }
       }
     }
-    fn execute_opcode(&mut self, warrior_id: usize, instr: &ExecutableInstruction) {
-      match crate::instructions::Opcode::from(instr.instruction.opcode) {
+
+    fn execute_opcode(&mut self, warrior_id: usize, instr: &ExecutableInstruction) -> Option<Process> {
+      match shared::instructions::Opcode::from(instr.instruction.opcode) {
           Opcode::Live => live(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::Ld   => ld(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::St   => st(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
@@ -44,12 +50,13 @@ impl Executer {
           Opcode::Zjmp => zjmp(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::Ldi  => ldi(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::Sti  => sti(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
-          Opcode::Fork => fork(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
+          Opcode::Fork => return fork(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::Lld  => lld(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::Lldi => lldi(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::Lfork=> lfork(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
           Opcode::Nop  => nop(&mut self.arena, &mut self.warriors[warrior_id-1], instr),
-      }
+      };
+      None
   }
   
    
@@ -75,7 +82,7 @@ pub fn st(arena: &mut Arena, warrior: &mut Warrior, instr: &ExecutableInstructio
     arena.memory[addr] = Some(ExecutableInstruction {
         instruction: instr.instruction,
         params: vec![val],
-        param_types: vec![crate::instructions::ParamType::Direct],
+        param_types: vec![shared::instructions::ParamType::Direct],
         size_bytes: 1,
     });
 }
@@ -147,13 +154,14 @@ pub fn sti(arena: &mut Arena, warrior: &mut Warrior, instr: &ExecutableInstructi
     arena.memory[addr] = Some(ExecutableInstruction {
         instruction: instr.instruction,
         params: vec![val],
-        param_types: vec![crate::instructions::ParamType::Direct],
+        param_types: vec![shared::instructions::ParamType::Direct],
         size_bytes: 1,
     });
 }
 
-pub fn fork(_arena: &mut Arena, _warrior: &mut Warrior, _instr: &ExecutableInstruction) {
+pub fn fork(_arena: &mut Arena, _warrior: &mut Warrior, _instr: &ExecutableInstruction) -> Option<Process> {
     // TODO: spawn new process
+    None
 }
 
 pub fn lld(_arena: &mut Arena, warrior: &mut Warrior, instr: &ExecutableInstruction) {

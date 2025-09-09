@@ -1,5 +1,4 @@
-use crate::vm::config::*;
-
+use crate::config::*;
 
 #[derive(Clone)]
 pub struct Warrior{

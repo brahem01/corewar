@@ -1,6 +1,6 @@
-use crate::{instructions::*, vm::warrior::Warrior, utils::*};
+use shared::{instructions::*, utils::*};
 use anyhow::{anyhow, Ok, Result};
-use crate::vm::config::*;
+use crate::{config::*, warrior::Warrior};
 
 #[derive(Debug, Clone)]
 pub struct ExecutableInstruction {

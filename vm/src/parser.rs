@@ -3,8 +3,8 @@ use std::env;
 use std::path::PathBuf;
 use std::io::{BufReader, Read};
 use anyhow::{anyhow, Result};
-use crate::vm::config::{DESCRIPTION_LENGTH, MAX_PLAYERS, MAX_PROGRAM_SIZE};
-use crate::vm::warrior::Warrior;
+use crate::config::{DESCRIPTION_LENGTH, MAX_PLAYERS, MAX_PROGRAM_SIZE};
+use crate::warrior::Warrior;
 
 pub fn parse_folder() -> Result<Vec<(Warrior, Vec<u8>)>> {
       let dir = env::var("BINARIES")?; 

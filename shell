@@ -1,0 +1,13 @@
+# 1️⃣ Backup just in case
+cp -r assembler ../assembler_backup
+
+# 2️⃣ Remove any leftover submodule metadata
+rm -rf assembler/.git
+rm -rf .git/modules/assembler
+
+# 3️⃣ Add the folder as a normal directory
+git add assembler
+
+# 4️⃣ Commit the change
+git commit -m "refactor: convert assembler folder to normal tracked directory"
+
