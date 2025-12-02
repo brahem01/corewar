@@ -1,12 +1,13 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
-    path::Path,
+    path::Path, ptr::null,
 };
 
-use super::lexer::{tokenize, Token};
-use shared::instructions::{Instruction, ParamType, INSTRUCTIONS};
+use super::lexer::{Token, tokenize};
+use shared::instructions::{INSTRUCTIONS, Instruction, ParamType};
 
 #[derive(Debug)]
 pub struct Param {
@@ -22,10 +23,17 @@ pub enum ValueType {
 }
 
 #[derive(Debug)]
+pub struct ParseResult {
+    instr: Option<InstructionInstance>,
+    label: Option<String>,
+}
+
+#[derive(Debug)]
 pub struct Player {
     pub name: String,
     pub comment: String,
     pub instructions: Vec<InstructionInstance>,
+    pub labels: HashMap<String, usize>,
 }
 
 impl Player {
@@ -34,6 +42,7 @@ impl Player {
             name: String::new(),
             comment: String::new(),
             instructions: Vec::new(),
+            labels: HashMap::new(),
         }
     }
 }
@@ -93,10 +102,17 @@ pub fn parse_file(path: &Path) -> Result<Player> {
                 line_num + 1
             ));
         }
-        let tokens = tokenize(&line);
 
+        let tokens = tokenize(&line)?;
         match parse_tokens(&tokens) {
-            Ok(inst) => player.instructions.push(inst),
+            Ok(parseResult) => {
+                if let Some(inst) = parseResult.instr {
+                    player.instructions.push(inst);
+                }
+                if let Some(label) = parseResult.label {
+                    player.labels.insert(label, player.instructions.len());
+                }
+            },
             Err(e) => return Err(anyhow!(format!("Error line {}: {}", line_num + 1, e))),
         }
     }
@@ -104,13 +120,21 @@ pub fn parse_file(path: &Path) -> Result<Player> {
 }
 
 // Convert tokens into InstructionInstance
-fn parse_tokens(tokens: &[Token]) -> Result<InstructionInstance, String> {
+// here should the return should be a inst or labelDef(String) so we need a general type contains the both
+fn parse_tokens(tokens: &[Token]) -> Result<ParseResult, String> {
     let mut iter = tokens.iter();
-    let instr_token = iter.next().ok_or("Empty line")?;
-
-    let instr_name = match instr_token {
+    let mut token = iter.next().ok_or("Empty line")?;
+    let mut label = None;
+    if let Token::LabelDef(lbl) = token {
+        label = Some(lbl.clone());
+        let option_token = iter.next();
+        match option_token {
+            Some(tkn) => token = tkn,
+            None=> return  Ok(ParseResult { instr: None, label })
+        }
+    }
+    let instr_name = match token {
         Token::Instr(name) => name,
-        Token::LabelDef(_) => return Err("Label line, skipping".to_string()),
         _ => return Err("Expected instruction".to_string()),
     };
 
@@ -147,6 +171,8 @@ fn parse_tokens(tokens: &[Token]) -> Result<InstructionInstance, String> {
             params.len()
         ));
     }
-
-    Ok(InstructionInstance { instr, params })
+    Ok(ParseResult {
+        instr: Some(InstructionInstance { instr, params }),
+        label: label,
+    })
 }

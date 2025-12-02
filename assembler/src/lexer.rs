@@ -1,3 +1,5 @@
+use anyhow::{Result, anyhow};
+
 #[derive(Debug)]
 pub enum Token {
     Instr(String),
@@ -9,7 +11,7 @@ pub enum Token {
     Comma,
 }
 
-pub fn tokenize(line: &str) -> Vec<Token> {
+pub fn tokenize(line: &str) -> Result<Vec<Token>> {
     let mut tokens = Vec::new();
     let line = line.split(';').next().unwrap_or(""); // remove comments
 
@@ -24,8 +26,10 @@ pub fn tokenize(line: &str) -> Vec<Token> {
         } else if let Some(dir) = p.strip_prefix('%') {
             if let Ok(val) = dir.parse::<i32>() {
                 tokens.push(Token::Direct(val));
-            } else {
+            } else if let Some(dir) = dir.strip_prefix(':') {
                 tokens.push(Token::LabelRef(dir.to_string()));
+            }else {
+                return Err(anyhow!(format!("invalid Direct argument")));
             }
         } else if let Ok(num) = p.parse::<i32>() {
             tokens.push(Token::Indirect(num));
@@ -34,5 +38,5 @@ pub fn tokenize(line: &str) -> Vec<Token> {
         }
     }
 
-    tokens
+    Ok(tokens)
 }
