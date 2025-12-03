@@ -1,0 +1,14 @@
+#!/bin/bash
+# compare.sh
+
+REF="myPlayer.cor"
+YOURS="zjmp.cor"
+
+echo "=== File sizes ==="
+ls -l $REF $YOURS
+
+echo -e "\n=== Byte-by-byte comparison ==="
+cmp $REF $YOURS && echo "✓ Files are identical!" || echo "✗ Files differ"
+
+echo -e "\n=== Hex diff (first 20 differences) ==="
+diff -u <(xxd $REF) <(xxd $YOURS) | head -40
