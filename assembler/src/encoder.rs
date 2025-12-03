@@ -1,15 +1,14 @@
-use super::parser::{InstructionInstance, Param};
+use super::instruction::InstructionInstance;
 use crate::parser::Player;
-use shared::instructions::{Instruction, ParamType, INSTRUCTIONS};
 use anyhow::Result;
+use std::collections::HashMap;
 
 struct CorHeader {
     magic: u32,
     name: [u8; 128],
-    padding1: [u8; 4],
+    padding: [u8; 4],
     prog_size: u32,
     comment: [u8; 2048],
-    padding2: [u8; 4],
 }
 
 impl CorHeader {
@@ -21,42 +20,21 @@ impl CorHeader {
         Self {
             magic: 0x00EA83F3,
             name,
-            padding1: [0u8; 4],
+            padding: [0u8; 4],
             prog_size,
             comment,
-            padding2: [0u8; 4],
         }
     }
 }
 
-fn compute_pcode(params: &[Param]) -> u8 {
-    let mut pcode = 0u8;
-    for (i, param) in params.iter().enumerate() {
-        let bits = match param.param_type {
-            ParamType::Register => 0b01,
-            ParamType::Direct => 0b10,
-            ParamType::Indirect => 0b11,
-        };
-        pcode |= bits << (6 - 2 * i);
-    }
-    pcode
-}
+
 
 fn compute_program_size(instructions: &[InstructionInstance]) -> u32 {
-    instructions.iter().map(|inst| {
-        let mut size = 1; // opcode
-        if inst.instr.has_pcode { size += 1; }
-        for param in &inst.params {
-            size += match param.param_type {
-                ParamType::Register => 1,
-                ParamType::Indirect => 2,
-                ParamType::Direct => if inst.instr.has_idx { 2 } else { 4 },
-            };
-        }
-        size
-    }).sum()
+    instructions
+        .iter()
+        .map(InstructionInstance::compute_instruction_size)
+        .sum()
 }
-
 
 
 pub fn encode(player: Player) -> Result<Vec<u8>> {
@@ -66,39 +44,51 @@ pub fn encode(player: Player) -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
 
     // Serialize header
-    buffer.extend(&head.magic.to_be_bytes()); 
-    buffer.extend(&head.name);                
-    buffer.extend(&head.padding1);           
-    buffer.extend(&head.prog_size.to_be_bytes()); 
-    buffer.extend(&head.comment);            
-    buffer.extend(&head.padding2);           
+    buffer.extend(&head.magic.to_be_bytes());
+    buffer.extend(&head.name);
+    buffer.extend(&head.padding);
+    buffer.extend(&head.prog_size.to_be_bytes());
+    buffer.extend(&head.comment);
+    buffer.extend(&head.padding);
 
-    // Encode each instruction
-    for inst in &player.instructions {
-        //if its a label register the adress < labelDef>
-        buffer.push(inst.instr.opcode as u8); // opcode
 
-        if inst.instr.has_pcode {
-            let pcode = compute_pcode(&inst.params);
-            buffer.push(pcode);
-        }
-
-        for param in &inst.params {
-            match param.param_type {
-                ParamType::Register => buffer.push(param.value as u8),
-                ParamType::Direct => {
-                    if inst.instr.has_idx {
-                        buffer.extend(&(param.value as i16).to_be_bytes());
-                    } else {
-                        buffer.extend(&param.value.to_be_bytes());
-                    }
-                }
-                ParamType::Indirect => {
-                    buffer.extend(&(param.value as i16).to_be_bytes());
-                }
-            }
-        }
-    }
+    let labels = first_pass(&player.instructions);
+    let body = second_pass(&player.instructions, &labels);
+    buffer.extend_from_slice(&body);
 
     Ok(buffer)
 }
+
+
+// First pass: just calculate positions, don't encode yet
+fn first_pass(instructions: &[InstructionInstance]) -> HashMap<String, usize> {
+    let mut labels = HashMap::new();
+    let mut byte_position = 0;
+    
+    for inst in instructions {
+        // Record label if present
+        if let Some(label_name) = &inst.label() {
+            labels.insert(label_name.clone(), byte_position);
+        }
+        
+        // Calculate instruction size (don't encode yet)
+        byte_position += inst.calculate_instruction_size();
+    }
+    
+    labels
+}
+
+// Second pass: encode with all labels known
+fn second_pass(instructions: &[InstructionInstance], labels: &HashMap<String, usize>) -> Vec<u8> {
+    let mut bytecode = Vec::new();
+    let mut current_pos = 0;
+    
+    for inst in instructions {
+        let encoded = inst.encode(current_pos, labels);
+        current_pos += encoded.len();
+        bytecode.extend(encoded);
+    }
+    
+    bytecode
+} 
+

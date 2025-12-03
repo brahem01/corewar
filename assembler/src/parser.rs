@@ -3,24 +3,14 @@ use std::{
     collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
-    path::Path, ptr::null,
+    path::Path,
 };
 
-use super::lexer::{Token, tokenize};
-use shared::instructions::{INSTRUCTIONS, Instruction, ParamType};
-
-#[derive(Debug)]
-pub struct Param {
-    pub param_type: ParamType,
-    pub value: i32,
-    // pub value: ValueType,
-}
-
-#[derive(Debug)]
-pub enum ValueType {
-    value(i32),
-    label(String),
-}
+use super::{
+    lexer::{Token, tokenize},
+    instruction::{InstructionInstance, Param, ValueType},
+};
+use shared::instructions::{INSTRUCTIONS, ParamType};
 
 #[derive(Debug)]
 pub struct ParseResult {
@@ -47,11 +37,8 @@ impl Player {
     }
 }
 
-#[derive(Debug)]
-pub struct InstructionInstance {
-    pub instr: &'static Instruction,
-    pub params: Vec<Param>,
-}
+
+
 
 pub fn parse_file(path: &Path) -> Result<Player> {
     let file = File::open(path)?;
@@ -60,7 +47,7 @@ pub fn parse_file(path: &Path) -> Result<Player> {
     for (line_num, line) in reader.lines().enumerate() {
         let line = line?;
         let line_trimmed = line.trim();
-        if line_trimmed.is_empty() || line_trimmed.starts_with(';') {
+        if line_trimmed.is_empty() || line_trimmed.starts_with('#') {
             continue;
         }
         // Capture .name directive
@@ -84,7 +71,7 @@ pub fn parse_file(path: &Path) -> Result<Player> {
         }
 
         // Capture .comment directive
-        if line_trimmed.starts_with(".comment") {
+        if line_trimmed.starts_with(".description") {
             if let Some(start) = line_trimmed.find('"') {
                 if let Some(end) = line_trimmed[start + 1..].find('"') {
                     if !player.comment.is_empty() {
@@ -105,11 +92,11 @@ pub fn parse_file(path: &Path) -> Result<Player> {
 
         let tokens = tokenize(&line)?;
         match parse_tokens(&tokens) {
-            Ok(parseResult) => {
-                if let Some(inst) = parseResult.instr {
+            Ok(parse_result) => {
+                if let Some(inst) = parse_result.instr {
                     player.instructions.push(inst);
                 }
-                if let Some(label) = parseResult.label {
+                if let Some(label) = parse_result.label {
                     player.labels.insert(label, player.instructions.len());
                 }
             },
@@ -149,15 +136,19 @@ fn parse_tokens(tokens: &[Token]) -> Result<ParseResult, String> {
         match token {
             Token::Register(r) => params.push(Param {
                 param_type: ParamType::Register,
-                value: *r as i32,
+                value: ValueType::value(*r as i32),
             }),
             Token::Direct(v) => params.push(Param {
                 param_type: ParamType::Direct,
-                value: *v,
+                value: ValueType::value(*v),
             }),
             Token::Indirect(v) => params.push(Param {
                 param_type: ParamType::Indirect,
-                value: *v,
+                value: ValueType::value(*v),
+            }),
+            Token::LabelRef(v) => params.push(Param {
+                param_type: ParamType::Direct,
+                value: ValueType::label(v.clone()),
             }),
             Token::Comma => continue,
             _ => return Err(format!("Unexpected token: {:?}", token)),
@@ -172,7 +163,7 @@ fn parse_tokens(tokens: &[Token]) -> Result<ParseResult, String> {
         ));
     }
     Ok(ParseResult {
-        instr: Some(InstructionInstance { instr, params }),
+        instr: Some(InstructionInstance { instr, params, label: label.clone() }),
         label: label,
     })
 }

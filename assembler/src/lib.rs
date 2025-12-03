@@ -2,6 +2,7 @@ pub mod parser;
 pub mod lexer;
 pub mod encoder;
 pub mod errors;
+pub mod instruction;
 
 use anyhow::{Result, anyhow};
 use std::path::Path;
