@@ -67,7 +67,7 @@ fn first_pass(instructions: &[InstructionInstance]) -> HashMap<String, usize> {
     
     for inst in instructions {
         // Record label if present
-        if let Some(label_name) = &inst.label() {
+        if let Some(label_name) = &inst.label {
             labels.insert(label_name.clone(), byte_position);
         }
         

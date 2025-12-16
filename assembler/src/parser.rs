@@ -12,11 +12,6 @@ use super::{
 };
 use shared::instructions::{INSTRUCTIONS, ParamType};
 
-#[derive(Debug)]
-pub struct ParseResult {
-    instr: Option<InstructionInstance>,
-    label: Option<String>,
-}
 
 #[derive(Debug)]
 pub struct Player {
@@ -92,13 +87,8 @@ pub fn parse_file(path: &Path) -> Result<Player> {
 
         let tokens = tokenize(&line)?;
         match parse_tokens(&tokens) {
-            Ok(parse_result) => {
-                if let Some(inst) = parse_result.instr {
-                    player.instructions.push(inst);
-                }
-                if let Some(label) = parse_result.label {
-                    player.labels.insert(label, player.instructions.len());
-                }
+            Ok(instr) => {
+                player.instructions.push(instr);
             },
             Err(e) => return Err(anyhow!(format!("Error line {}: {}", line_num + 1, e))),
         }
@@ -108,16 +98,16 @@ pub fn parse_file(path: &Path) -> Result<Player> {
 
 // Convert tokens into InstructionInstance
 // here should the return should be a inst or labelDef(String) so we need a general type contains the both
-fn parse_tokens(tokens: &[Token]) -> Result<ParseResult, String> {
+fn parse_tokens(tokens: &[Token]) -> Result<InstructionInstance, String> {
     let mut iter = tokens.iter();
     let mut token = iter.next().ok_or("Empty line")?;
-    let mut label = None;
+    let mut instruction_instance = InstructionInstance::new();
     if let Token::LabelDef(lbl) = token {
-        label = Some(lbl.clone());
+        instruction_instance.label = Some(lbl.clone());
         let option_token = iter.next();
         match option_token {
             Some(tkn) => token = tkn,
-            None=> return  Ok(ParseResult { instr: None, label })
+            None=> return  Ok(instruction_instance)
         }
     }
     let instr_name = match token {
@@ -162,8 +152,7 @@ fn parse_tokens(tokens: &[Token]) -> Result<ParseResult, String> {
             params.len()
         ));
     }
-    Ok(ParseResult {
-        instr: Some(InstructionInstance { instr, params, label: label.clone() }),
-        label: label,
-    })
+    instruction_instance.instr = Some(instr);
+    instruction_instance.params = params;
+    Ok(instruction_instance)
 }

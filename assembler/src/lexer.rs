@@ -15,7 +15,7 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>> {
     let mut tokens = Vec::new();
     let line = line.split('#').next().unwrap_or(""); // remove comments
 
-    for part in line.split(|c| c == ' ' || c == ',').filter(|s| !s.is_empty()) {
+    for part in line.split(|c| char::is_whitespace(c) || c == ',').filter(|s| !s.is_empty()) {
         let p = part.trim();
         if p.ends_with(':') {
             tokens.push(Token::LabelDef(p.trim_end_matches(':').to_string()));

@@ -1,10 +1,10 @@
-use shared::instructions::{Instruction, ParamType};
+use shared::instructions::{ Instruction, ParamType };
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct InstructionInstance {
     pub label: Option<String>,
-    pub instr: &'static Instruction,
+    pub instr: Option<&'static Instruction>,
     pub params: Vec<Param>,
 }
 
@@ -21,11 +21,17 @@ pub enum ValueType {
 }
 
 impl InstructionInstance {
+    pub fn new() -> Self {
+        return InstructionInstance{
+            params: Vec::new(),
+            instr: None,
+            label: None
+        }
+    }
+
     pub fn label(&self) -> Option<String> {
         for param in &self.params {
-            if ParamType::Direct == param.param_type
-                && let ValueType::label(l) = &param.value
-            {
+            if ParamType::Direct == param.param_type && let ValueType::label(l) = &param.value {
                 return Some(l.to_string());
             }
         }
@@ -33,19 +39,24 @@ impl InstructionInstance {
     }
 
     pub fn calculate_instruction_size(&self) -> usize {
-        return 6;
+        return self.compute_instruction_size() as usize;
     }
 
     pub fn encode(&self, current_position: usize, labels: &HashMap<String, usize>) -> Vec<u8> {
         let mut buffer = Vec::new();
-        buffer.push(self.instr.opcode as u8); // opcode
-
-        if self.instr.has_pcode {
+        let instr;
+        if let Some(i) = self.instr {
+            instr = i;
+        } else {
+            return buffer;
+        }
+        
+        buffer.push(instr.opcode as u8); // opcode
+        if instr.has_pcode {
             let pcode = compute_pcode(&self.params);
             buffer.push(pcode);
         }
 
-        let mut position = current_position;
 
         for param in &self.params {
             let value = match &param.value {
@@ -55,8 +66,7 @@ impl InstructionInstance {
                     let target_pos = labels
                         .get(label_name)
                         .expect(&format!("Undefined label: {}", label_name));
-                    (*target_pos as i32) - (position as i32);
-                    *target_pos as i32 - current_position as i32 +1
+                    (*target_pos as i32) - (current_position as i32)
                 }
             };
 
@@ -65,7 +75,7 @@ impl InstructionInstance {
                     buffer.push(value as u8);
                 }
                 ParamType::Direct => {
-                    if self.instr.has_idx {
+                    if instr.has_idx {
                         buffer.extend(&(value as i16).to_be_bytes());
                     } else {
                         buffer.extend(&value.to_be_bytes());
@@ -82,8 +92,13 @@ impl InstructionInstance {
 
     pub fn compute_instruction_size(&self) -> u32 {
         let mut size = 1; // opcode
-
-        if self.instr.has_pcode {
+        let instr;
+        if let Some(i) = self.instr {
+            instr = i;
+        } else {
+            return 0;
+        }
+        if instr.has_pcode {
             size += 1;
         }
 
@@ -92,11 +107,7 @@ impl InstructionInstance {
                 ParamType::Register => 1,
                 ParamType::Indirect => 2,
                 ParamType::Direct => {
-                    if self.instr.has_idx {
-                        2
-                    } else {
-                        4
-                    }
+                    if instr.has_idx { 2 } else { 4 }
                 }
             };
         }
