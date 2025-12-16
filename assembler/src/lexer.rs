@@ -1,3 +1,4 @@
+
 use anyhow::{Result, anyhow};
 
 #[derive(Debug)]
@@ -20,8 +21,9 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>> {
         if p.ends_with(':') {
             tokens.push(Token::LabelDef(p.trim_end_matches(':').to_string()));
         } else if let Some(reg) = p.strip_prefix('r') {
-            if let Ok(num) = reg.parse::<u8>() {
-                tokens.push(Token::Register(num));
+            match validate_register(reg) {
+                Ok(num) => tokens.push(Token::Register(num)),
+                Err(e) => return Err(anyhow!(e))
             }
         } else if let Some(dir) = p.strip_prefix('%') {
             if let Ok(val) = dir.parse::<i32>() {
@@ -39,4 +41,14 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>> {
     }
 
     Ok(tokens)
+}
+
+
+fn validate_register(r: &str) -> Result<u8, String> {
+    let reg = r.parse::<u8>()
+            .map_err(|e| "invalid register")?;
+    if reg > 16 || reg < 1 {
+        return Err("register too long, or too smal".to_string());
+    }
+    Ok(reg)
 }
