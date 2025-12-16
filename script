@@ -1,8 +1,8 @@
 #!/bin/bash
 # compare.sh
 
-REF="myPlayer.cor"
-YOURS="zjmp.cor"
+REF="playground/players_src/pierino.cor"
+YOURS="players/bin/pierino.cor"
 
 echo "=== File sizes ==="
 ls -l $REF $YOURS
