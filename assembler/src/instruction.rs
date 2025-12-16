@@ -1,6 +1,6 @@
 use shared::instructions::{ Instruction, ParamType };
 use std::collections::HashMap;
-
+use anyhow::{Result, anyhow};
 #[derive(Debug)]
 pub struct InstructionInstance {
     pub label: Option<String>,
@@ -42,13 +42,13 @@ impl InstructionInstance {
         return self.compute_instruction_size() as usize;
     }
 
-    pub fn encode(&self, current_position: usize, labels: &HashMap<String, usize>) -> Vec<u8> {
+    pub fn encode(&self, current_position: usize, labels: &HashMap<String, usize>) -> Result<Vec<u8>> {
         let mut buffer = Vec::new();
         let instr;
         if let Some(i) = self.instr {
             instr = i;
         } else {
-            return buffer;
+            return Ok(buffer);
         }
         
         buffer.push(instr.opcode as u8); // opcode
@@ -63,10 +63,12 @@ impl InstructionInstance {
                 ValueType::value(v) => *v,
                 ValueType::label(label_name) => {
                     // Resolve label to offset
-                    let target_pos = labels
-                        .get(label_name)
-                        .expect(&format!("Undefined label: {}", label_name));
-                    (*target_pos as i32) - (current_position as i32)
+                    let target_pos;
+                    match (labels.get(label_name)) {
+                        Some(pos) => target_pos = *pos as i32,
+                        None => return Err(anyhow!("this labelReference: {} doesn't occur in any label definition", label_name))
+                    } 
+                    target_pos - (current_position as i32)
                 }
             };
 
@@ -87,7 +89,7 @@ impl InstructionInstance {
             }
         }
 
-        buffer
+        Ok(buffer)
     }
 
     pub fn compute_instruction_size(&self) -> u32 {

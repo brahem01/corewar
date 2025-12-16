@@ -18,6 +18,10 @@ pub struct Instruction {
     pub params: &'static [ &'static [ParamType] ],
 }
 
+pub fn valid_instruction(s: &str) -> bool {
+    INSTRUCTIONS.iter().any(|instr| instr.name == s)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Opcode {

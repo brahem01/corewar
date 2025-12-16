@@ -1,6 +1,6 @@
 
 use anyhow::{Result, anyhow};
-
+use shared::instructions::valid_instruction;
 #[derive(Debug)]
 pub enum Token {
     Instr(String),
@@ -33,10 +33,12 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>> {
             }else {
                 return Err(anyhow!(format!("invalid Direct argument")));
             }
+        } else if valid_instruction(p){
+            tokens.push(Token::Instr(p.to_string()));
         } else if let Ok(num) = p.parse::<i32>() {
             tokens.push(Token::Indirect(num));
         } else {
-            tokens.push(Token::Instr(p.to_string()));
+            return Err(anyhow!("invalid Indirect argument"));
         }
     }
 

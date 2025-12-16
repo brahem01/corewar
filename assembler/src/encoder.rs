@@ -1,6 +1,6 @@
 use super::instruction::InstructionInstance;
 use crate::parser::Player;
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 
 struct CorHeader {
@@ -52,8 +52,8 @@ pub fn encode(player: Player) -> Result<Vec<u8>> {
     buffer.extend(&head.padding);
 
 
-    let labels = first_pass(&player.instructions);
-    let body = second_pass(&player.instructions, &labels);
+    let labels = first_pass(&player.instructions)?;
+    let body = second_pass(&player.instructions, &labels)?;
     buffer.extend_from_slice(&body);
 
     Ok(buffer)
@@ -61,34 +61,36 @@ pub fn encode(player: Player) -> Result<Vec<u8>> {
 
 
 // First pass: just calculate positions, don't encode yet
-fn first_pass(instructions: &[InstructionInstance]) -> HashMap<String, usize> {
+fn first_pass(instructions: &[InstructionInstance]) -> Result<HashMap<String, usize>> {
     let mut labels = HashMap::new();
     let mut byte_position = 0;
     
     for inst in instructions {
         // Record label if present
         if let Some(label_name) = &inst.label {
-            labels.insert(label_name.clone(), byte_position);
+            if labels.insert(label_name.clone(), byte_position).is_some() {
+                return Err(anyhow!("the label {} doubled", label_name));
+            }
         }
         
         // Calculate instruction size (don't encode yet)
         byte_position += inst.calculate_instruction_size();
     }
     
-    labels
+    Ok(labels)
 }
 
 // Second pass: encode with all labels known
-fn second_pass(instructions: &[InstructionInstance], labels: &HashMap<String, usize>) -> Vec<u8> {
+fn second_pass(instructions: &[InstructionInstance], labels: &HashMap<String, usize>) -> Result<Vec<u8>> {
     let mut bytecode = Vec::new();
     let mut current_pos = 0;
     
     for inst in instructions {
-        let encoded = inst.encode(current_pos, labels);
+        let encoded = inst.encode(current_pos, labels)?;
         current_pos += encoded.len();
         bytecode.extend(encoded);
     }
     
-    bytecode
+    Ok(bytecode)
 } 
 
