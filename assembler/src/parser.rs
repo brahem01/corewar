@@ -42,7 +42,7 @@ pub fn parse_file(path: &Path) -> Result<Player> {
     for (line_num, line) in reader.lines().enumerate() {
         let line = line?;
         let line_trimmed = line.trim();
-        if line_trimmed.is_empty() || line_trimmed.starts_with('#') {
+        if line_trimmed.is_empty() || line_trimmed.starts_with(';') {
             continue;
         }
         // Capture .name directive

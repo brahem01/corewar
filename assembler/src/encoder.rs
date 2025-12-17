@@ -1,6 +1,6 @@
 use super::instruction::InstructionInstance;
 use crate::parser::Player;
-use anyhow::{Result, anyhow};
+use anyhow::{ Result, anyhow };
 use std::collections::HashMap;
 
 struct CorHeader {
@@ -18,7 +18,7 @@ impl CorHeader {
         name[..name_str.len()].copy_from_slice(name_str.as_bytes());
         comment[..comment_str.len()].copy_from_slice(comment_str.as_bytes());
         Self {
-            magic: 0x00EA83F3,
+            magic: 0x00ea83f3,
             name,
             padding: [0u8; 4],
             prog_size,
@@ -27,15 +27,9 @@ impl CorHeader {
     }
 }
 
-
-
 fn compute_program_size(instructions: &[InstructionInstance]) -> u32 {
-    instructions
-        .iter()
-        .map(InstructionInstance::compute_instruction_size)
-        .sum()
+    instructions.iter().map(InstructionInstance::compute_instruction_size).sum()
 }
-
 
 pub fn encode(player: Player) -> Result<Vec<u8>> {
     let prog_size = compute_program_size(&player.instructions);
@@ -51,7 +45,6 @@ pub fn encode(player: Player) -> Result<Vec<u8>> {
     buffer.extend(&head.comment);
     buffer.extend(&head.padding);
 
-
     let labels = first_pass(&player.instructions)?;
     let body = second_pass(&player.instructions, &labels)?;
     buffer.extend_from_slice(&body);
@@ -59,12 +52,11 @@ pub fn encode(player: Player) -> Result<Vec<u8>> {
     Ok(buffer)
 }
 
-
 // First pass: just calculate positions, don't encode yet
 fn first_pass(instructions: &[InstructionInstance]) -> Result<HashMap<String, usize>> {
     let mut labels = HashMap::new();
     let mut byte_position = 0;
-    
+
     for inst in instructions {
         // Record label if present
         if let Some(label_name) = &inst.label {
@@ -72,25 +64,40 @@ fn first_pass(instructions: &[InstructionInstance]) -> Result<HashMap<String, us
                 return Err(anyhow!("the label {} doubled", label_name));
             }
         }
-        
+        if let Some(instruction) = inst.instr {
+            if instruction.nb_params != (inst.params.len() as u8) {
+                return Err(
+                    anyhow!(
+                        format!(
+                            "the {} instruction should have {} parameters instead of {}",
+                            instruction.name,
+                            instruction.nb_params,
+                            inst.params.len()
+                        )
+                    )
+                );
+            }
+        }
         // Calculate instruction size (don't encode yet)
         byte_position += inst.calculate_instruction_size();
     }
-    
+
     Ok(labels)
 }
 
 // Second pass: encode with all labels known
-fn second_pass(instructions: &[InstructionInstance], labels: &HashMap<String, usize>) -> Result<Vec<u8>> {
+fn second_pass(
+    instructions: &[InstructionInstance],
+    labels: &HashMap<String, usize>
+) -> Result<Vec<u8>> {
     let mut bytecode = Vec::new();
     let mut current_pos = 0;
-    
+
     for inst in instructions {
         let encoded = inst.encode(current_pos, labels)?;
         current_pos += encoded.len();
         bytecode.extend(encoded);
     }
-    
-    Ok(bytecode)
-} 
 
+    Ok(bytecode)
+}
