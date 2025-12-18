@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# Configuration
+BINARY="./asm_ref"
+INPUT_DIR="players_src/"
+
+# Test files
+TEST_FILES=(
+    "empty_player.s"
+    "live.s"
+    "pierino_add.s"
+    "pierino_and_ind_ind.s"
+    "pierino_and_ind_reg.s"
+    "pierino_and_reg_ind.s"
+    "pierino_and_reg_reg.s"
+    "pierino_fork.s"
+    "pierino_ldi_dir_dir.s"
+    "pierino_ldi_dir_reg.s"
+    "pierino_ldi_ind_dir.s"
+    "pierino_ldi_ind_reg.s"
+    "pierino_ldi_reg_dir.s"
+    "pierino_ldi_reg_reg.s"
+    "pierino_ld.s"
+    "pierino_lld_dir_reg.s"
+    "pierino_lldi_dir_dir_reg.s"
+    "pierino_lldi_dir_reg_reg.s"
+    "pierino_lldi_ind_dir_reg.s"
+    "pierino_lldi_ind_reg_reg.s"
+    "pierino_lld_ind_reg.s"
+    "pierino_lldi_reg_dir_reg.s"
+    "pierino_lldi_reg_reg_reg.s"
+    "pierino_or_ind_ind.s"
+    "pierino_or_ind_reg.s"
+    "pierino_or_reg_ind.s"
+    "pierino_or_reg_reg.s"
+    "pierino.s"
+    "pierino_st_ind.s"
+    "pierino_sti_reg_dir_dir.s"
+    "pierino_sti_reg_dir_reg.s"
+    "pierino_sti_reg_ind_dir.s"
+    "pierino_sti_reg_ind_reg.s"
+    "pierino_sti_reg_reg_dir.s"
+    "pierino_sti_reg_reg_reg.s"
+    "pierino_st_reg.s"
+    "pierino_sub.s"
+    "pierino_test.s"
+    "pierino_xor_ind_ind.s"
+    "pierino_xor_ind_reg.s"
+    "pierino_xor_reg_ind.s"
+    "pierino_xor_reg_reg.s"
+    "player.s"
+    "zjmp.s"
+)
+
+# Run each file
+for FILE in "${TEST_FILES[@]}"; do
+    echo "Running: $BINARY $INPUT_DIR/$FILE"
+    $BINARY "$INPUT_DIR/$FILE"
+    echo ""
+done
