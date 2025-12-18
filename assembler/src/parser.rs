@@ -42,7 +42,7 @@ pub fn parse_file(path: &Path) -> Result<Player> {
     for (line_num, line) in reader.lines().enumerate() {
         let line = line?;
         let line_trimmed = line.trim();
-        if line_trimmed.is_empty() || line_trimmed.starts_with(';') {
+        if line_trimmed.is_empty() || line_trimmed.starts_with(';') || line_trimmed.starts_with("#") {
             continue;
         }
         // Capture .name directive
@@ -85,7 +85,8 @@ pub fn parse_file(path: &Path) -> Result<Player> {
             ));
         }
 
-        let tokens = tokenize(&line)?;
+        let tokens = tokenize(&line)
+                    .map_err(|e| anyhow!("error parsing the file line: {}\nerror: {}", line_num+1, e))?;
         match parse_tokens(&tokens) {
             Ok(instr) => {
                 player.instructions.push(instr);
