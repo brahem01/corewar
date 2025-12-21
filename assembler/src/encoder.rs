@@ -1,6 +1,5 @@
 use super::instruction::InstructionInstance;
 use crate::parser::Player;
-use anyhow::{ Result, anyhow };
 use std::collections::HashMap;
 
 struct CorHeader {
@@ -31,7 +30,7 @@ fn compute_program_size(instructions: &[InstructionInstance]) -> u32 {
     instructions.iter().map(InstructionInstance::compute_instruction_size).sum()
 }
 
-pub fn encode(player: Player) -> Result<Vec<u8>> {
+pub fn encode(player: Player) -> Result<Vec<u8>, String> {
     let prog_size = compute_program_size(&player.instructions);
     let head = CorHeader::new(&player.name, &player.comment, prog_size);
 
@@ -53,7 +52,7 @@ pub fn encode(player: Player) -> Result<Vec<u8>> {
 }
 
 // First pass: just calculate positions, don't encode yet
-fn first_pass(instructions: &[InstructionInstance]) -> Result<HashMap<String, usize>> {
+fn first_pass(instructions: &[InstructionInstance]) -> Result<HashMap<String, usize>, String> {
     let mut labels = HashMap::new();
     let mut byte_position = 0;
 
@@ -61,20 +60,18 @@ fn first_pass(instructions: &[InstructionInstance]) -> Result<HashMap<String, us
         // Record label if present
         if let Some(label_name) = &inst.label {
             if labels.insert(label_name.clone(), byte_position).is_some() {
-                return Err(anyhow!("the label {} doubled", label_name));
+                return Err(format!("the label {} doubled", label_name));
             }
         }
         if let Some(instruction) = inst.instr {
             if instruction.nb_params != (inst.params.len() as u8) {
                 return Err(
-                    anyhow!(
-                        format!(
+                    format!(
                             "the {} instruction should have {} parameters instead of {}",
                             instruction.name,
                             instruction.nb_params,
                             inst.params.len()
                         )
-                    )
                 );
             }
         }
@@ -89,7 +86,7 @@ fn first_pass(instructions: &[InstructionInstance]) -> Result<HashMap<String, us
 fn second_pass(
     instructions: &[InstructionInstance],
     labels: &HashMap<String, usize>
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>, String> {
     let mut bytecode = Vec::new();
     let mut current_pos = 0;
 

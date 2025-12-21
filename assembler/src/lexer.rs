@@ -1,5 +1,4 @@
 
-use anyhow::{Result, anyhow};
 use shared::instructions::valid_instruction;
 #[derive(Debug)]
 pub enum Token {
@@ -12,7 +11,7 @@ pub enum Token {
     Comma,
 }
 
-pub fn tokenize(line: &str) -> Result<Vec<Token>> {
+pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
     let line = line.split(|c| c == ';' || c == '#').next().unwrap_or(""); // remove comments
 
@@ -23,7 +22,7 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>> {
         } else if let Some(reg) = p.strip_prefix('r') {
             match validate_register(reg) {
                 Ok(num) => tokens.push(Token::Register(num)),
-                Err(e) => return Err(anyhow!(e))
+                Err(e) => return Err(format!("{e}"))
             }
         } else if let Some(dir) = p.strip_prefix('%') {
             if let Ok(val) = dir.parse::<i32>() {
@@ -31,14 +30,14 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>> {
             } else if let Some(dir) = dir.strip_prefix(':') {
                 tokens.push(Token::LabelRef(dir.to_string()));
             }else {
-                return Err(anyhow!(format!("invalid Direct argument")));
+                return Err(format!("invalid Direct argument"));
             }
         } else if valid_instruction(p){
             tokens.push(Token::Instr(p.to_string()));
         } else if let Ok(num) = p.parse::<i32>() {
             tokens.push(Token::Indirect(num));
         } else {
-            return Err(anyhow!("invalid Indirect argument"));
+            return Err(format!("invalid Indirect argument"));
         }
     }
 
@@ -48,7 +47,7 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>> {
 
 fn validate_register(r: &str) -> Result<u8, String> {
     let reg = r.parse::<u8>()
-            .map_err(|e| "invalid register")?;
+            .map_err(|e| format!("invalid register: {e}"))?;
     if reg > 16 || reg < 1 {
         return Err("register too long, or too smal".to_string());
     }

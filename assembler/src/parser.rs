@@ -1,4 +1,3 @@
-use anyhow::{Result, anyhow};
 use std::{
     collections::HashMap,
     fs::File,
@@ -35,12 +34,14 @@ impl Player {
 
 
 
-pub fn parse_file(path: &Path) -> Result<Player> {
-    let file = File::open(path)?;
+pub fn parse_file(path: &Path) -> Result<Player, String> {
+    let file = File::open(path)
+                .map_err(|e| format!("{e}"))?;
     let reader = BufReader::new(file);
     let mut player = Player::new();
     for (line_num, line) in reader.lines().enumerate() {
-        let line = line?;
+        let line = line
+                .map_err(|e| format!("error reading for the buffer: {e}"))?;
         let line_trimmed = line.trim();
         if line_trimmed.is_empty() || line_trimmed.starts_with(';') || line_trimmed.starts_with("#") {
             continue;
@@ -50,16 +51,16 @@ pub fn parse_file(path: &Path) -> Result<Player> {
             if let Some(start) = line_trimmed.find('"') {
                 if let Some(end) = line_trimmed[start + 1..].find('"') {
                     if !player.name.is_empty() {
-                        return Err(anyhow!(format!(
+                        return Err(format!(
                             "Error line {}: multiple name declaration",
                             line_num + 1
-                        )));
+                        ));
                     }
                     player.name = line_trimmed[start + 1..start + 1 + end].to_string();
                     continue;
                 }
             }
-            return Err(anyhow!(
+            return Err(format!(
                 "Error line {}: Invalid .name directive",
                 line_num + 1
             ));
@@ -70,28 +71,28 @@ pub fn parse_file(path: &Path) -> Result<Player> {
             if let Some(start) = line_trimmed.find('"') {
                 if let Some(end) = line_trimmed[start + 1..].find('"') {
                     if !player.comment.is_empty() {
-                        return Err(anyhow!(format!(
+                        return Err(format!(
                             "Error line {}: multiple comment declaration",
                             line_num + 1
-                        )));
+                        ));
                     }
                     player.comment = line_trimmed[start + 1..start + 1 + end].to_string();
                     continue;
                 }
             }
-            return Err(anyhow!(
+            return Err(format!(
                 "Error line {}: Invalid .comment directive",
                 line_num + 1
             ));
         }
 
         let tokens = tokenize(&line)
-                    .map_err(|e| anyhow!("error parsing the file line: {}\nerror: {}", line_num+1, e))?;
+                    .map_err(|e| format!("error parsing the file line: {}\nerror: {}", line_num+1, e))?;
         match parse_tokens(&tokens) {
             Ok(instr) => {
                 player.instructions.push(instr);
             },
-            Err(e) => return Err(anyhow!(format!("Error line {}: {}", line_num + 1, e))),
+            Err(e) => return Err(format!("Error line {}: {}", line_num + 1, e)),
         }
     }
     Ok(player)
@@ -127,19 +128,19 @@ fn parse_tokens(tokens: &[Token]) -> Result<InstructionInstance, String> {
         match token {
             Token::Register(r) => params.push(Param {
                 param_type: ParamType::Register,
-                value: ValueType::value(*r as i32),
+                value: ValueType::Value(*r as i32),
             }),
             Token::Direct(v) => params.push(Param {
                 param_type: ParamType::Direct,
-                value: ValueType::value(*v),
+                value: ValueType::Value(*v),
             }),
             Token::Indirect(v) => params.push(Param {
                 param_type: ParamType::Indirect,
-                value: ValueType::value(*v),
+                value: ValueType::Value(*v),
             }),
             Token::LabelRef(v) => params.push(Param {
                 param_type: ParamType::Direct,
-                value: ValueType::label(v.clone()),
+                value: ValueType::Label(v.clone()),
             }),
             Token::Comma => continue,
             _ => return Err(format!("Unexpected token: {:?}", token)),

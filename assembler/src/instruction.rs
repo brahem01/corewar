@@ -1,6 +1,5 @@
 use shared::instructions::{ Instruction, ParamType };
 use std::collections::HashMap;
-use anyhow::{Result, anyhow};
 #[derive(Debug)]
 pub struct InstructionInstance {
     pub label: Option<String>,
@@ -16,8 +15,8 @@ pub struct Param {
 
 #[derive(Debug)]
 pub enum ValueType {
-    value(i32),
-    label(String),
+    Value(i32),
+    Label(String),
 }
 
 impl InstructionInstance {
@@ -31,7 +30,7 @@ impl InstructionInstance {
 
     pub fn label(&self) -> Option<String> {
         for param in &self.params {
-            if ParamType::Direct == param.param_type && let ValueType::label(l) = &param.value {
+            if ParamType::Direct == param.param_type && let ValueType::Label(l) = &param.value {
                 return Some(l.to_string());
             }
         }
@@ -42,7 +41,7 @@ impl InstructionInstance {
         return self.compute_instruction_size() as usize;
     }
 
-    pub fn encode(&self, current_position: usize, labels: &HashMap<String, usize>) -> Result<Vec<u8>> {
+    pub fn encode(&self, current_position: usize, labels: &HashMap<String, usize>) -> Result<Vec<u8>, String> {
         let mut buffer = Vec::new();
         let instr;
         if let Some(i) = self.instr {
@@ -60,13 +59,13 @@ impl InstructionInstance {
 
         for param in &self.params {
             let value = match &param.value {
-                ValueType::value(v) => *v,
-                ValueType::label(label_name) => {
+                ValueType::Value(v) => *v,
+                ValueType::Label(label_name) => {
                     // Resolve label to offset
                     let target_pos;
-                    match (labels.get(label_name)) {
+                    match labels.get(label_name) {
                         Some(pos) => target_pos = *pos as i32,
-                        None => return Err(anyhow!("this labelReference: {} doesn't occur in any label definition", label_name))
+                        None => return Err(format!("this labelReference: {} doesn't occur in any label definition", label_name))
                     } 
                     target_pos - (current_position as i32)
                 }
