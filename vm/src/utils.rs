@@ -53,7 +53,7 @@ pub fn parse_arguments(files: &[String]) -> Result<Vec<Player>, String> {
         let program = buffer[offset..offset + size as usize].to_vec();
 
         players.push(Player::new(
-            -1,
+            i as i32+1,
             name,
             comment,
             program,

@@ -38,13 +38,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arena = Arena::new();
 
     let mut processes = Vec::with_capacity(players_count);
-    for (i, player) in players.iter().enumerate() {
-        processes.push(Process::new(
-            player.id,
+    for (i, player) in players.clone().iter().rev().enumerate() {
+        let process = Process::new(
+            player.clone().id,
             player.name.clone(),
-            0,
+            i+1,
             MEM_SIZE / players_count * i,
-        ));
+        );
+        processes.push(process)
     }
 
     let mut vm = VirtualMachine::create(arena, processes);

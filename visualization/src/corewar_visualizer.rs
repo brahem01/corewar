@@ -1,6 +1,6 @@
-use std::sync::mpsc::Receiver;
 use eframe::egui;
 use egui::Color32;
+use std::sync::mpsc::Receiver;
 use vm::{Arena, Process, VmSnapshot};
 
 pub struct CorewarVisualizer {
@@ -12,6 +12,8 @@ pub struct CorewarVisualizer {
     cols_per_row: usize,
     winners: Vec<Process>,
     game_over: bool,
+    // Track which player owns each cell (0 = unowned)
+    cell_owners: Vec<i32>,
 }
 
 impl CorewarVisualizer {
@@ -21,10 +23,11 @@ impl CorewarVisualizer {
             arena: Arena::new(),
             processes: Vec::new(),
             cycle: 0,
-            cell_size: 18.0,
-            cols_per_row: 64,
+            cell_size: 12.0,
+            cols_per_row: 32,
             winners: Vec::new(),
             game_over: false,
+            cell_owners: vec![0; 4096], // Initialize with 0 (unowned)
         }
     }
 }
@@ -37,7 +40,20 @@ impl eframe::App for CorewarVisualizer {
             self.arena = snapshot.arena;
             self.processes = snapshot.processes;
             self.winners = snapshot.winners;
-            self.game_over = snapshot.game_over;  // Get game_over directly from VM
+            self.game_over = snapshot.game_over;
+
+            // Resize cell_owners if arena size changed
+            if self.cell_owners.len() != self.arena.memory.len() {
+                self.cell_owners.resize(self.arena.memory.len(), 0);
+            }
+
+            // Update cell ownership: whenever a process is at a position, claim it
+            for p in &self.processes {
+                let pc = p.pc.get();
+                if pc < self.cell_owners.len() {
+                    self.cell_owners[pc] = p.player_id;
+                }
+            }
         }
 
         // Show winner overlay when VM says game is over
@@ -50,27 +66,26 @@ impl eframe::App for CorewarVisualizer {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
                 ui.heading(egui::RichText::new("🎮 Corewar Arena").size(20.0));
-                
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if self.game_over {
                         ui.label(
                             egui::RichText::new("🏁 GAME OVER")
                                 .size(16.0)
                                 .color(Color32::from_rgb(255, 200, 100))
-                                .strong()
+                                .strong(),
                         );
                         ui.separator();
                     }
                     ui.label(
                         egui::RichText::new(format!("⚡ {} Processes", self.processes.len()))
                             .size(14.0)
-                            .color(Color32::from_rgb(100, 200, 255))
+                            .color(Color32::from_rgb(100, 200, 255)),
                     );
                     ui.separator();
                     ui.label(
                         egui::RichText::new(format!("Cycle: {}", self.cycle))
                             .size(14.0)
-                            .strong()
+                            .strong(),
                     );
                 });
             });
@@ -86,7 +101,6 @@ impl eframe::App for CorewarVisualizer {
                 ui.add_space(4.0);
                 ui.heading("Active Processes");
                 ui.separator();
-                
                 egui::ScrollArea::vertical()
                     .auto_shrink([false; 2])
                     .show(ui, |ui| {
@@ -105,23 +119,22 @@ impl eframe::App for CorewarVisualizer {
                 ui.add_space(8.0);
 
                 ui.label("Cell Size:");
-                ui.add(egui::Slider::new(&mut self.cell_size, 12.0..=30.0)
-                    .suffix("px"));
-                
+                ui.add(egui::Slider::new(&mut self.cell_size, 12.0..=30.0).suffix("px"));
+
                 ui.add_space(8.0);
                 ui.label("Columns:");
-                ui.add(egui::Slider::new(&mut self.cols_per_row, 16..=128)
-                    .logarithmic(true));
-                
+                ui.add(egui::Slider::new(&mut self.cols_per_row, 16..=128).logarithmic(true));
+
                 ui.add_space(16.0);
                 ui.separator();
                 ui.add_space(8.0);
-                
+
                 // Arena stats
                 ui.label(egui::RichText::new("Arena Info").strong());
                 ui.add_space(4.0);
                 ui.label(format!("Memory Size: {} bytes", self.arena.memory.len()));
-                ui.label(format!("Grid: {}x{}", 
+                ui.label(format!(
+                    "Grid: {}x{}",
                     self.cols_per_row,
                     (self.arena.memory.len() + self.cols_per_row - 1) / self.cols_per_row
                 ));
@@ -147,8 +160,8 @@ impl CorewarVisualizer {
 
         let font_id = FontId::monospace(self.cell_size * 0.55);
         let spacing = 1.0;
-        
-        // Create a process position lookup for faster rendering
+
+        // Create a process position lookup for PC highlighting
         let mut pc_map = std::collections::HashMap::new();
         for p in &self.processes {
             pc_map.insert(p.pc.get(), p.player_id);
@@ -159,14 +172,28 @@ impl CorewarVisualizer {
             .spacing([spacing, spacing])
             .show(ui, |ui| {
                 for (i, byte) in self.arena.memory.iter().enumerate() {
-                    // Determine color based on process position
-                    let bg_color = if let Some(&player_id) = pc_map.get(&i) {
-                        player_color(player_id)
+                    // Get the owner of this cell from our tracked ownership
+                    let owner_id = if i < self.cell_owners.len() {
+                        self.cell_owners[i]
                     } else {
-                        Color32::from_rgb(30, 30, 35)
+                        0
+                    };
+                    
+                    // Color based on cell owner (every cell gets player color if owned)
+                    let base_color = if owner_id < 0 {
+                        player_color(owner_id)
+                    } else {
+                        Color32::from_rgb(30, 30, 35) // Unowned cells
                     };
 
-                    let text_color = if pc_map.contains_key(&i) {
+                    // Make PC positions brighter
+                    let bg_color = if pc_map.contains_key(&i) {
+                        brighten_color(base_color, 1.4)
+                    } else {
+                        base_color
+                    };
+
+                    let text_color = if owner_id != 0 {
                         Color32::WHITE
                     } else {
                         Color32::from_rgb(150, 150, 160)
@@ -175,17 +202,17 @@ impl CorewarVisualizer {
                     // Allocate space and draw cell
                     let cell_size = Vec2::splat(self.cell_size);
                     let (rect, response) = ui.allocate_exact_size(cell_size, Sense::hover());
-                    
+
                     // Draw background
                     ui.painter().rect_filled(rect, 1.0, bg_color);
-                    
-                    // Add border for highlighted cells
+
+                    // Add border for PC positions
                     if pc_map.contains_key(&i) {
                         ui.painter().rect_stroke(
                             rect,
                             1.0,
-                            egui::Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
-                            egui::epaint::StrokeKind::Outside
+                            egui::Stroke::new(2.0, Color32::WHITE),
+                            egui::epaint::StrokeKind::Outside,
                         );
                     }
 
@@ -203,10 +230,18 @@ impl CorewarVisualizer {
                         response.on_hover_ui(|ui| {
                             ui.label(format!("Address: 0x{:04X} ({})", i, i));
                             ui.label(format!("Value: 0x{:02X} ({})", byte, byte));
+                            if owner_id != 0 {
+                                ui.colored_label(
+                                    player_color(owner_id),
+                                    format!("Owner: Player {}", -owner_id),
+                                );
+                            } else {
+                                ui.colored_label(Color32::GRAY, "Unowned");
+                            }
                             if let Some(&player_id) = pc_map.get(&i) {
                                 ui.colored_label(
-                                    player_color(player_id),
-                                    format!("⚡ Player {} PC", -player_id)
+                                    brighten_color(player_color(player_id-1), 1.4),
+                                    format!("⚡ Player {} PC", -player_id),
                                 );
                             }
                         });
@@ -221,68 +256,77 @@ impl CorewarVisualizer {
 
     fn draw_processes(&self, ui: &mut egui::Ui) {
         use egui::RichText;
-        
+
         if self.processes.is_empty() {
             ui.colored_label(Color32::GRAY, "No active processes");
             return;
         }
-        
-        for p in &self.processes {
-            let color = player_color(p.player_id);
-            
-            ui.group(|ui| {
-                // Process header
-                ui.horizontal(|ui| {
-                    ui.colored_label(
-                        color,
-                        RichText::new(format!("● Player {}", -p.player_id)).strong().size(14.0)
-                    );
-                    ui.separator();
-                    ui.label(format!("PID: {}", p.id));
-                });
-                
-                ui.add_space(4.0);
-                
-                // Process details
-                egui::Grid::new(format!("process_{}", p.id))
-                    .num_columns(2)
-                    .spacing([8.0, 4.0])
-                    .show(ui, |ui| {
-                        ui.label(RichText::new("PC:").strong());
-                        ui.label(format!("0x{:04X} ({})", p.pc.get(), p.pc.get()));
-                        ui.end_row();
-                        
-                        ui.label(RichText::new("Carry:").strong());
-                        if p.carry {
-                            ui.colored_label(Color32::from_rgb(100, 255, 100), "✓ True");
-                        } else {
-                            ui.colored_label(Color32::from_rgb(255, 100, 100), "✗ False");
-                        }
-                        ui.end_row();
-                        
-                        ui.label(RichText::new("Wait:").strong());
-                        ui.label(format!("{} cycles", p.remaining_cycles));
-                        ui.end_row();
-                        
-                        ui.label(RichText::new("Instruction:").strong());
-                        ui.label(
-                            if p.current_instruction.is_some() {
-                                &p.current_instruction_name
-                            } else {
-                                "—"
-                            }
-                        );
-                        ui.end_row();
+
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(8.0, 8.0);
+            for p in &self.processes {
+                let color = player_color(p.player_id);
+
+                ui.group(|ui| {
+                    ui.set_min_width(220.0);
+                    ui.vertical(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.colored_label(
+                                color,
+                                RichText::new(format!("Player {}", p.id))
+                                    .strong()
+                                    .size(14.0),
+                            );
+                            ui.separator();
+                            ui.label(format!("PID: {}", p.id));
+                            ui.separator();
+                            ui.label(format!("name: {}", p.name));
+                        });
+
+                        ui.add_space(4.0);
+
+                        // Process details
+                        egui::Grid::new(format!("process_{}", p.id))
+                            .num_columns(2)
+                            .spacing([8.0, 4.0])
+                            .show(ui, |ui| {
+                                ui.label(RichText::new("PC:").strong());
+                                ui.label(format!("0x{:04X} ({})", p.pc.get(), p.pc.get()));
+                                ui.end_row();
+
+                                ui.label(RichText::new("Carry:").strong());
+                                if p.carry {
+                                    ui.colored_label(Color32::from_rgb(100, 255, 100), "✓ True");
+                                } else {
+                                    ui.colored_label(Color32::from_rgb(255, 100, 100), "✗ False");
+                                }
+                                ui.end_row();
+
+                                ui.label(RichText::new("Wait:").strong());
+                                ui.label(format!("{} cycles", p.remaining_cycles));
+                                if p.remaining_cycles > 0 {
+                                    ui.visuals_mut().widgets.active.bg_fill = Color32::DARK_GREEN;
+                                }
+                                ui.end_row();
+
+                                ui.label(RichText::new("Instruction:").strong());
+                                ui.label(if p.current_instruction.is_some() {
+                                    &p.current_instruction_name
+                                } else {
+                                    "—"
+                                });
+                                ui.end_row();
+                            });
                     });
-            });
-            
-            ui.add_space(4.0);
-        }
+                });
+                ui.add_space(4.0);
+            }
+        });
     }
-    
+
     fn show_winner_overlay(&self, ctx: &egui::Context) {
         use egui::{Align2, Color32, RichText};
-        
+
         egui::Area::new(egui::Id::new("winner_overlay"))
             .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
@@ -291,78 +335,72 @@ impl CorewarVisualizer {
                     .show(ui, |ui| {
                         ui.set_min_width(500.0);
                         ui.set_min_height(300.0);
-                        
                         ui.vertical_centered(|ui| {
                             ui.add_space(40.0);
-                            
+
                             if !self.winners.is_empty() {
                                 // There's a winner!
                                 let winner = &self.winners[0];
                                 let winner_color = player_color(winner.player_id);
-                                
+
                                 ui.label(RichText::new("🏆").size(80.0));
                                 ui.add_space(20.0);
-                                
+
                                 ui.label(
                                     RichText::new("WINNER!")
                                         .size(48.0)
                                         .color(Color32::from_rgb(255, 215, 0))
-                                        .strong()
+                                        .strong(),
                                 );
-                                
                                 ui.add_space(20.0);
-                                
+
                                 ui.label(
                                     RichText::new(format!("Player {}", winner.name))
                                         .size(36.0)
                                         .color(winner_color)
-                                        .strong()
+                                        .strong(),
                                 );
-                                
                                 ui.add_space(10.0);
-                                
+
                                 ui.label(
                                     RichText::new(format!("Victory at cycle {}", self.cycle))
                                         .size(20.0)
-                                        .color(Color32::LIGHT_GRAY)
+                                        .color(Color32::LIGHT_GRAY),
                                 );
-                                
                                 ui.add_space(10.0);
-                                
+
                                 ui.label(
                                     RichText::new(format!("Final Process ID: {}", winner.id))
                                         .size(16.0)
-                                        .color(Color32::LIGHT_GRAY)
+                                        .color(Color32::LIGHT_GRAY),
                                 );
                             } else {
                                 // Draw - no winner
                                 ui.label(RichText::new("🏳️").size(80.0));
                                 ui.add_space(20.0);
-                                
+
                                 ui.label(
                                     RichText::new("DRAW")
                                         .size(48.0)
                                         .color(Color32::from_rgb(200, 200, 200))
-                                        .strong()
+                                        .strong(),
                                 );
-                                
                                 ui.add_space(20.0);
-                                
+
                                 ui.label(
                                     RichText::new("No processes remaining")
                                         .size(20.0)
-                                        .color(Color32::LIGHT_GRAY)
+                                        .color(Color32::LIGHT_GRAY),
                                 );
-                                
                                 ui.add_space(10.0);
-                                
+
                                 ui.label(
                                     RichText::new(format!("Game ended at cycle {}", self.cycle))
                                         .size(16.0)
-                                        .color(Color32::LIGHT_GRAY)
+                                        .color(Color32::LIGHT_GRAY),
                                 );
                             }
-                            
+
                             ui.add_space(40.0);
                         });
                     });
@@ -371,14 +409,21 @@ impl CorewarVisualizer {
 }
 
 /// Assign distinct, vibrant colors to each player
-fn player_color(player_id: i32) -> Color32 {
-    match -player_id {
-        1 => Color32::from_rgb(255, 80, 80),   // Vibrant red
-        2 => Color32::from_rgb(80, 150, 255),  // Vibrant blue
+fn player_color(mut player_id: i32) -> Color32 {
+    if player_id<0 {player_id*=-1}
+    match player_id {
+        1 => Color32::from_rgb(80, 150, 255),  // Vibrant blue
+        2 => Color32::from_rgb(255, 80, 80),   // Vibrant red
         3 => Color32::from_rgb(80, 255, 120),  // Vibrant green
         4 => Color32::from_rgb(255, 220, 80),  // Vibrant yellow
-        5 => Color32::from_rgb(255, 120, 255), // Magenta
-        6 => Color32::from_rgb(120, 255, 255), // Cyan
         _ => Color32::GRAY,
     }
+}
+
+/// Brighten a color by a factor
+fn brighten_color(color: Color32, factor: f32) -> Color32 {
+    let r = (color.r() as f32 * factor).min(255.0) as u8;
+    let g = (color.g() as f32 * factor).min(255.0) as u8;
+    let b = (color.b() as f32 * factor).min(255.0) as u8;
+    Color32::from_rgb(r, g, b)
 }
