@@ -1,5 +1,10 @@
 [workspace]
-resolver = "3"
-members = ["assembler", "shared"]
+members = [
+    "shared",
+    "vm",
+    "visualization",
+    "assembler", "core",
+    # "dissasembler"
+]
 
 [workspace.dependencies]

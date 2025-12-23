@@ -1,0 +1,11 @@
+[package]
+name = "visualization"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+vm = { path = "../vm" }
+eframe = { version = "0.33", optional = true }
+
+[features]
+gui = ["eframe"]
