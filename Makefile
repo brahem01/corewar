@@ -1,14 +1,10 @@
 
 build: 
-	@cargo build --release --features gui 
+	@cargo build --release
 
 clean: 
 	@rm -rf players/bin/*
-
-run: 
-	@./target/release/core $(ARGS)
-
-
+	
 asm:
 	@./target/release/assembler $(ARGS)
 vm:

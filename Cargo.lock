@@ -633,14 +633,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "visualization",
- "vm",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2934,16 +2926,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "visualization"
+name = "vm"
 version = "0.1.0"
 dependencies = [
  "eframe",
- "vm",
+ "egui",
 ]
-
-[[package]]
-name = "vm"
-version = "0.1.0"
 
 [[package]]
 name = "walkdir"

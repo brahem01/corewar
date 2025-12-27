@@ -2,8 +2,7 @@
 members = [
     "shared",
     "vm",
-    "visualization",
-    "assembler", "core",
+    "assembler",
     # "dissasembler"
 ]
 
