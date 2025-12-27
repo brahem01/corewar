@@ -7,7 +7,7 @@ clean:
 	
 asm:
 	@./target/release/assembler $(ARGS)
-vm:
+run:
 	@./target/release/vm $(ARGS)
 disasm:
 	@./target/release/disassemler $(ARGS)
