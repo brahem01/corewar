@@ -17,7 +17,7 @@ pub fn run_gui(rx: Receiver<VmSnapshot>) {
     let _ = eframe::run_native(
         "Corewar Visualization",
         options,
-        Box::new(|cc| {
+        Box::new(|_cc| {
             Ok(Box::new(CorewarVisualizer::new(rx)))
         }),
     );

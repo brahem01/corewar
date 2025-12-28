@@ -207,7 +207,8 @@ impl VirtualMachine {
                     let mut new_process = process::Process::new(
                         process.player_id,
                         process.id,
-                        process.pc.get()
+                        process.pc.get(),
+                        process.name.clone(),
                     );
                     new_process.pc.set(new_pc as usize, use_idx);
                     new_process.current_instruction = None;

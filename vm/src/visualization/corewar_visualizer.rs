@@ -179,9 +179,9 @@ impl CorewarVisualizer {
                     } else {
                         0
                     };
-                    
+
                     // Color based on cell owner (every cell gets player color if owned)
-                    let base_color = if owner_id < 0 {
+                    let base_color = if owner_id != 0 {
                         player_color(owner_id)
                     } else {
                         Color32::from_rgb(30, 30, 35) // Unowned cells
@@ -234,20 +234,20 @@ impl CorewarVisualizer {
                             if owner_id != 0 {
                                 ui.colored_label(
                                     player_color(owner_id),
-                                    format!("Owner: Player {}", -owner_id),
+                                    format!("Owner: Player {}", owner_id),
                                 );
                             } else {
                                 ui.colored_label(Color32::GRAY, "Unowned");
                             }
                             if let Some(&player_id) = pc_map.get(&i) {
                                 ui.colored_label(
-                                    brighten_color(player_color(player_id-1), 1.4),
-                                    format!("⚡ Player {} PC", -player_id),
+                                    brighten_color(player_color(player_id), 1.4),
+                                    format!("⚡ Player {} PC", player_id),
                                 );
                             }
                         });
                     }
-
+                    // New row
                     if (i + 1) % self.cols_per_row == 0 {
                         ui.end_row();
                     }
@@ -274,14 +274,14 @@ impl CorewarVisualizer {
                         ui.horizontal(|ui| {
                             ui.colored_label(
                                 color,
-                                RichText::new(format!("Player {}", p.id))
+                                RichText::new(format!("Player {}", p.player_id))
                                     .strong()
                                     .size(14.0),
                             );
                             ui.separator();
                             ui.label(format!("PID: {}", p.id));
                             ui.separator();
-                            // ui.label(format!("name: {}", p.name));
+                            ui.label(format!("name: {}", p.name));
                         });
 
                         ui.add_space(4.0);
@@ -331,7 +331,7 @@ impl CorewarVisualizer {
         egui::Area::new(egui::Id::new("winner_overlay"))
             .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
-                egui::Frame::none()
+                egui::Frame::NONE
                     .fill(Color32::from_black_alpha(200))
                     .show(ui, |ui| {
                         ui.set_min_width(500.0);
@@ -341,8 +341,8 @@ impl CorewarVisualizer {
 
                             if !self.winners.is_empty() {
                                 // There's a winner!
-                                let winner = &self.winners.iter().next().unwrap();
-                                let winner_color = player_color(**winner);
+                                let winner = &self.winners.iter().next().unwrap() as &i32;
+                                let winner_color = player_color(*winner);
 
                                 ui.label(RichText::new("🏆").size(80.0));
                                 ui.add_space(20.0);
@@ -356,7 +356,7 @@ impl CorewarVisualizer {
                                 ui.add_space(20.0);
 
                                 ui.label(
-                                    RichText::new(format!("Player {}", self.winners.iter().next().unwrap()))
+                                    RichText::new(format!("Player {}", winner))
                                         .size(36.0)
                                         .color(winner_color)
                                         .strong(),
@@ -371,7 +371,7 @@ impl CorewarVisualizer {
                                 ui.add_space(10.0);
 
                                 ui.label(
-                                    RichText::new(format!("Final Process ID: {}", winner))
+                                    RichText::new(format!("Final Process ID: {}", -1 * winner -1))
                                         .size(16.0)
                                         .color(Color32::LIGHT_GRAY),
                                 );
@@ -411,7 +411,7 @@ impl CorewarVisualizer {
 
 /// Assign distinct, vibrant colors to each player
 fn player_color(mut player_id: i32) -> Color32 {
-    if player_id<0 {player_id*=-1}
+    if player_id<0 {player_id*=-1} 
     match player_id {
         1 => Color32::from_rgb(80, 150, 255),  // Vibrant blue
         2 => Color32::from_rgb(255, 80, 80),   // Vibrant red
