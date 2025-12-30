@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "shared",
-    "vm",
     "assembler",
     # "dissasembler"
 ]

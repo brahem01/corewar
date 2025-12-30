@@ -53,6 +53,6 @@ TEST_FILES=(
 # Run each file
 for FILE in "${TEST_FILES[@]}"; do
     echo "Running: $BINARY $INPUT_DIR/$FILE"
-    $BINARY"$FILE"
+    $BINARY"playground/players_src/$FILE"
     echo ""
 done
