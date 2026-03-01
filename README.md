@@ -62,7 +62,7 @@ corewar/
 ├── src/
 │   ├── assembler/     # Assembly compiler
 │   ├── vm/            # Virtual machine
-│   └── disassembler/  # Bytecode decompiler (bonus)
+│   └── disassembler/  # Bytecode decompiler 
 ├── players/           # Champion .s files
 ├── config/            # Configuration constants
 └── Makefile
@@ -83,7 +83,7 @@ cargo build --release
 Executables will be in `target/release/`:
 - `assembler` - Compiles .s to .cor
 - `vm` - Executes .cor files
-- `disassembler` - Decompiles .cor to .s (bonus)
+- `disassembler` - Decompiles .cor to .s 
 
 ## Usage
 
@@ -124,7 +124,7 @@ make run ARGS="player1.cor player2.cor"
 
 **Player Limit**: Maximum 4 players per match
 
-### Disassembler (Bonus)
+### Disassembler 
 
 Decompile bytecode back to assembly:
 
@@ -316,29 +316,6 @@ All VM and assembler constants are centralized in the config file:
 - `NBR_LIVE`: Live threshold
 - `MAX_CHECKS`: Check limit
 
-## Requirements
-
-- **No external libraries** for core functionality (parsing, execution)
-- **Standard library only** for Assembler and VM
-- **No memory leaks**
-- **No crashes** under any input
-- **Deterministic execution** - same inputs always produce same outputs
-- **Big-endian** binary format
-
-## Bonus Features
-
-- ✅ Disassembler (.cor → .s)
-- ✅ Real-time visualizer
-- ✅ Arithmetic operations in assembly
-- ✅ Macro system
-
-*Bonuses only evaluated if core Assembler and VM are perfect*
-
-## Resources
-
-- Reference VM and Assembler binaries provided in `playground/`
-- Dockerfile for containerized testing
-- Configuration file with all constants
 
 ## License
 
